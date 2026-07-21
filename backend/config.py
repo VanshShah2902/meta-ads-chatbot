@@ -15,4 +15,7 @@ GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")
 GOOGLE_CREDENTIALS_PATH = BASE_DIR / "credentials.json"
 GOOGLE_TOKEN_PATH = DATA_DIR / "token.json"
 
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 DATABASE_PATH = os.getenv("DATABASE_PATH", str(DATA_DIR / "meta_ads.db"))
+
+USE_POSTGRES = bool(DATABASE_URL)
