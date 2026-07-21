@@ -259,28 +259,27 @@ def ingest_csv(file_path: str, filename: str = None) -> dict:
             df_filtered[col] = pd.to_numeric(df_filtered[col], errors="coerce").fillna(0.0)
 
     cur = conn.cursor()
-    rows_imported = 0
+    cols = list(df_filtered.columns)
+    col_names = ",".join(cols)
+    all_values = [tuple(row) for row in df_filtered.itertuples(index=False, name=None)]
 
-    for _, row in df_filtered.iterrows():
-        cols = list(row.index)
-        values = tuple(row.values)
-
-        if USE_POSTGRES:
-            placeholders = ",".join(["%s"] * len(cols))
-            col_names = ",".join(cols)
-            conflict_cols = "ad_id, date, placement, platform"
-            update_set = ", ".join([f"{c} = EXCLUDED.{c}" for c in cols if c not in ["ad_id", "date", "placement", "platform"]])
-            sql = f"INSERT INTO ads_data ({col_names}) VALUES ({placeholders}) ON CONFLICT ({conflict_cols}) DO UPDATE SET {update_set}"
-        else:
-            placeholders = ",".join(["?"] * len(cols))
-            col_names = ",".join(cols)
-            sql = f"INSERT OR REPLACE INTO ads_data ({col_names}) VALUES ({placeholders})"
-
-        try:
-            cur.execute(sql, values)
-            rows_imported += 1
-        except Exception:
-            continue
+    if USE_POSTGRES:
+        from psycopg2.extras import execute_values
+        conflict_cols = "ad_id, date, placement, platform"
+        update_set = ", ".join([f"{c} = EXCLUDED.{c}" for c in cols if c not in ["ad_id", "date", "placement", "platform"]])
+        sql = f"INSERT INTO ads_data ({col_names}) VALUES %s ON CONFLICT ({conflict_cols}) DO UPDATE SET {update_set}"
+        execute_values(cur, sql, all_values, page_size=500)
+        rows_imported = len(all_values)
+    else:
+        placeholders = ",".join(["?"] * len(cols))
+        sql = f"INSERT OR REPLACE INTO ads_data ({col_names}) VALUES ({placeholders})"
+        rows_imported = 0
+        for values in all_values:
+            try:
+                cur.execute(sql, values)
+                rows_imported += 1
+            except Exception:
+                continue
 
     log_sql = "INSERT INTO import_log (filename, rows_imported, table_name) VALUES (%s, %s, %s)" if USE_POSTGRES else "INSERT INTO import_log (filename, rows_imported, table_name) VALUES (?, ?, ?)"
     cur.execute(log_sql, (filename, rows_imported, "ads_data"))
