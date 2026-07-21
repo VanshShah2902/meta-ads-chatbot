@@ -213,9 +213,7 @@ def auto_sync_if_needed():
     if not GOOGLE_DRIVE_FOLDER_ID:
         return
 
-    stats = cached_stats()
-    if stats["total_rows"] == 0:
-        run_sync()
+    run_sync()
 
 
 def run_sync():
