@@ -1,5 +1,6 @@
 import os
 import io
+import json
 from pathlib import Path
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -17,7 +18,10 @@ DOWNLOAD_DIR.mkdir(exist_ok=True)
 def get_drive_service():
     creds = None
 
-    if GOOGLE_TOKEN_PATH.exists():
+    google_token_json = os.getenv("GOOGLE_TOKEN_JSON", "")
+    if google_token_json:
+        creds = Credentials.from_authorized_user_info(json.loads(google_token_json), SCOPES)
+    elif GOOGLE_TOKEN_PATH.exists():
         creds = Credentials.from_authorized_user_file(str(GOOGLE_TOKEN_PATH), SCOPES)
 
     if not creds or not creds.valid:
@@ -26,18 +30,18 @@ def get_drive_service():
         else:
             if not GOOGLE_CREDENTIALS_PATH.exists():
                 raise FileNotFoundError(
-                    "credentials.json not found. Download it from Google Cloud Console "
-                    "(APIs & Services > Credentials > OAuth 2.0 Client IDs) "
-                    "and place it in the backend/ directory."
+                    "credentials.json not found and GOOGLE_TOKEN_JSON env var not set. "
+                    "Run the app locally first to authenticate with Google Drive."
                 )
             flow = InstalledAppFlow.from_client_secrets_file(
                 str(GOOGLE_CREDENTIALS_PATH), SCOPES
             )
             creds = flow.run_local_server(port=0)
 
-        GOOGLE_TOKEN_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with open(GOOGLE_TOKEN_PATH, "w") as token:
-            token.write(creds.to_json())
+        if not google_token_json:
+            GOOGLE_TOKEN_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with open(GOOGLE_TOKEN_PATH, "w") as token:
+                token.write(creds.to_json())
 
     return build("drive", "v3", credentials=creds)
 
