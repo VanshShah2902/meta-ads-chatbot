@@ -45,6 +45,12 @@ ABBREVIATION GLOSSARY (CRITICAL — use these exact definitions):
 - CPA = Cost Per Action/Result = the cpa column (cost per result from Meta)
 - AOV = Average Order Value = SUM(purchase_value) / NULLIF(SUM(purchases), 0)
 
+NAMING CONVENTIONS:
+- Campaign, adset, and ad names often encode attributes like language, audience, creative type, etc. separated by delimiters like " | ", " - ", or " _ ".
+- There is NO separate "language" column. To split by language, extract it from campaign_name, adset_name, or ad_name using CASE WHEN ... ILIKE '%hindi%' THEN 'Hindi' WHEN ... ILIKE '%english%' THEN 'English' etc.
+- Similarly for other attributes not in the schema (e.g., audience type, creative format) — extract from names using ILIKE pattern matching.
+- When the user asks for a split by an attribute not in the schema, look for it in the name columns.
+
 RULES:
 1. Generate a valid SQL SELECT query (PostgreSQL compatible). Never generate INSERT, UPDATE, DELETE, DROP, or ALTER.
 2. Use the exact column names from the schema.
