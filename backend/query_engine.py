@@ -46,10 +46,12 @@ ABBREVIATION GLOSSARY (CRITICAL — use these exact definitions):
 - AOV = Average Order Value = SUM(purchase_value) / NULLIF(SUM(purchases), 0)
 
 NAMING CONVENTIONS:
-- Campaign, adset, and ad names often encode attributes like language, audience, creative type, etc. separated by delimiters like " | ", " - ", or " _ ".
-- There is NO separate "language" column. To split by language, extract it from campaign_name, adset_name, or ad_name using CASE WHEN ... ILIKE '%hindi%' THEN 'Hindi' WHEN ... ILIKE '%english%' THEN 'English' etc.
-- Similarly for other attributes not in the schema (e.g., audience type, creative format) — extract from names using ILIKE pattern matching.
-- When the user asks for a split by an attribute not in the schema, look for it in the name columns.
+- Campaign, adset, and ad names encode attributes like language, audience, creative type, etc.
+- There is NO separate "language" column. To filter or group by language, use ad_name (most granular) with ILIKE.
+- Look at the sample ad names in the schema above to understand the naming patterns.
+- To split by language: use CASE WHEN ad_name ILIKE '%hindi%' THEN 'Hindi' WHEN ad_name ILIKE '%english%' THEN 'English' WHEN ad_name ILIKE '%marathi%' THEN 'Marathi' WHEN ad_name ILIKE '%gujarati%' THEN 'Gujarati' WHEN ad_name ILIKE '%tamil%' THEN 'Tamil' WHEN ad_name ILIKE '%telugu%' THEN 'Telugu' WHEN ad_name ILIKE '%kannada%' THEN 'Kannada' WHEN ad_name ILIKE '%bengali%' THEN 'Bengali' ELSE 'Other' END AS language
+- For ANY attribute not in the schema (language, creative type, audience, etc.) — extract from ad_name or campaign_name using ILIKE.
+- Always search ad_name first (most detailed), then adset_name, then campaign_name.
 
 RULES:
 1. Generate a valid SQL SELECT query (PostgreSQL compatible). Never generate INSERT, UPDATE, DELETE, DROP, or ALTER.

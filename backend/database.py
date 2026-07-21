@@ -332,6 +332,16 @@ def get_schema_description() -> str:
         if names:
             schema_parts.append(f"  Sample campaign names: {', '.join(names)}")
 
+        ad_samples = _fetchall(conn, "SELECT DISTINCT ad_name FROM ads_data WHERE ad_name IS NOT NULL LIMIT 15")
+        ad_names = [s["ad_name"] for s in ad_samples if s["ad_name"]]
+        if ad_names:
+            schema_parts.append(f"  Sample ad names: {', '.join(ad_names)}")
+
+        adset_samples = _fetchall(conn, "SELECT DISTINCT adset_name FROM ads_data WHERE adset_name IS NOT NULL LIMIT 15")
+        adset_names = [s["adset_name"] for s in adset_samples if s["adset_name"]]
+        if adset_names:
+            schema_parts.append(f"  Sample adset names: {', '.join(adset_names)}")
+
         platforms = _fetchall(conn, "SELECT DISTINCT platform FROM ads_data WHERE platform IS NOT NULL")
         if platforms:
             schema_parts.append(f"  Platforms: {', '.join(p['platform'] for p in platforms)}")
