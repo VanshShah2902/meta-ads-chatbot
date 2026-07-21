@@ -55,7 +55,7 @@ RULES:
    - ALWAYS recompute rates from raw sums using the formulas in the ABBREVIATION GLOSSARY above.
    - Do NOT average pre-computed rates (ctr, cpc, cpm, cvr, c2v_ratio) — recompute from raw sums.
 6. "purchases" or "sales" or "transactions" = purchases column. "revenue" or "sales value" = purchase_value column.
-7. Round monetary values to 2 decimal places, percentages to 2 decimal places.
+7. Round monetary values to 2 decimal places, percentages to 2 decimal places. IMPORTANT: In PostgreSQL, ROUND() requires numeric type. Always cast: ROUND(value::numeric, 2) — never ROUND(double precision, integer).
 8. Limit results to 50 rows unless user asks for more.
 9. GROUP BY the appropriate level (campaign_name, adset_name, ad_name, date, platform, placement).
 10. IMPORTANT: When the user says "CPT" they mean Cost Per Transaction (spend/purchases), NOT Cost Per Click. Double-check abbreviation meanings against the glossary before generating SQL.
