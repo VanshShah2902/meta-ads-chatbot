@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+backend/data/
+backend/.env
+backend/credentials.json
+backend/token.json
+
+# Node
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Sample data
+sample_data/*.csv
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
