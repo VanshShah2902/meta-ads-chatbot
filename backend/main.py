@@ -1,6 +1,7 @@
 import os
 import shutil
 import logging
+import threading
 from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, HTTPException
@@ -10,6 +11,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from database import init_db, ingest_csv, get_stats, get_schema_description, execute_query
 from query_engine import ask
 from config import DATA_DIR
+
+sync_state = {"running": False, "last_result": None}
 
 logger = logging.getLogger("meta_ads")
 logging.basicConfig(level=logging.INFO)
@@ -129,34 +132,44 @@ def sync_drive():
 @app.get("/sync-status")
 def sync_status():
     job = scheduler.get_job("daily_drive_sync")
-    if job:
-        return {
-            "enabled": True,
-            "schedule": "Daily at 2:00 AM",
-            "next_run": str(job.next_run_time),
-        }
-    return {"enabled": False}
+    result = {
+        "scheduled": bool(job),
+        "schedule": "Daily at 2:00 AM" if job else None,
+        "next_run": str(job.next_run_time) if job else None,
+        "sync_running": sync_state["running"],
+        "last_sync_result": sync_state["last_result"],
+    }
+    return result
+
+
+def _run_sync_background():
+    sync_state["running"] = True
+    sync_state["last_result"] = None
+    try:
+        from drive_sync import sync_from_drive
+        result = sync_from_drive()
+        sync_state["last_result"] = result
+        logger.info(f"Background sync complete: {result}")
+    except Exception as e:
+        sync_state["last_result"] = {"status": "error", "message": str(e)}
+        logger.error(f"Background sync failed: {e}")
+    finally:
+        sync_state["running"] = False
 
 
 @app.post("/sync/now")
 def sync_now():
-    """Trigger an immediate sync (in addition to the daily schedule)."""
-    try:
-        from drive_sync import sync_from_drive
-        result = sync_from_drive()
-        return result
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
+    if sync_state["running"]:
+        return {"status": "already_running", "message": "Sync is already in progress"}
+    thread = threading.Thread(target=_run_sync_background, daemon=True)
+    thread.start()
+    return {"status": "started", "message": "Sync started in background. Check /sync-status for progress."}
 
 
 @app.get("/imports")
 def list_imports():
-    from database import get_connection
+    from database import get_connection, _fetchall
     conn = get_connection()
-    rows = conn.execute(
-        "SELECT filename, rows_imported, table_name, imported_at FROM import_log ORDER BY imported_at DESC"
-    ).fetchall()
+    rows = _fetchall(conn, "SELECT filename, rows_imported, table_name, imported_at FROM import_log ORDER BY imported_at DESC")
     conn.close()
     return [dict(row) for row in rows]
