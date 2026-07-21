@@ -10,7 +10,7 @@ if USE_POSTGRES:
 
 def get_connection():
     if USE_POSTGRES:
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=10)
         conn.autocommit = False
         return conn
     else:

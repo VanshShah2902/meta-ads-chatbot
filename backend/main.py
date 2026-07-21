@@ -44,7 +44,12 @@ def daily_sync_job():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
+    logger.info("Starting up — initializing database...")
+    try:
+        init_db()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Database init failed: {e}")
     scheduler.add_job(daily_sync_job, "cron", hour=2, minute=0, id="daily_drive_sync")
     scheduler.start()
     logger.info("Scheduler started — daily Drive sync at 2:00 AM")
