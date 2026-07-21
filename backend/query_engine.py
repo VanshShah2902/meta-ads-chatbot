@@ -1,8 +1,33 @@
+import logging
 from groq import Groq
-from config import GROQ_API_KEY, GROQ_MODEL
+from config import GROQ_API_KEYS, GROQ_MODEL
 from database import get_schema_description, execute_query
 
-client = Groq(api_key=GROQ_API_KEY)
+logger = logging.getLogger("meta_ads")
+
+_clients = [Groq(api_key=key) for key in GROQ_API_KEYS]
+_current_key_idx = 0
+
+
+def _call_groq(messages, temperature=0, max_tokens=1024, response_format=None):
+    global _current_key_idx
+    last_error = None
+    for _ in range(len(_clients)):
+        client = _clients[_current_key_idx]
+        try:
+            kwargs = dict(model=GROQ_MODEL, messages=messages, temperature=temperature, max_tokens=max_tokens)
+            if response_format:
+                kwargs["response_format"] = response_format
+            return client.chat.completions.create(**kwargs)
+        except Exception as e:
+            err_str = str(e).lower()
+            if "rate_limit" in err_str or "429" in err_str or "limit" in err_str:
+                logger.warning(f"Key {_current_key_idx + 1}/{len(_clients)} rate limited, rotating...")
+                _current_key_idx = (_current_key_idx + 1) % len(_clients)
+                last_error = e
+            else:
+                raise
+    raise last_error
 
 SYSTEM_PROMPT = """You are a Meta Ads data analyst assistant. You help users query their historical Meta Ads data stored in a PostgreSQL database.
 
@@ -91,8 +116,7 @@ def ask(question: str, chat_history: list[dict] = None) -> dict:
     messages.append({"role": "user", "content": question})
 
     try:
-        response = client.chat.completions.create(
-            model=GROQ_MODEL,
+        response = _call_groq(
             messages=messages,
             temperature=0,
             max_tokens=1024,
@@ -157,8 +181,7 @@ def format_answer(question: str, data: list[dict], explanation: str, sql: str) -
             },
         ]
 
-        response = client.chat.completions.create(
-            model=GROQ_MODEL,
+        response = _call_groq(
             messages=summary_messages,
             temperature=0.3,
             max_tokens=300,
